@@ -133,12 +133,12 @@ const program = pipe(
     TE.fromEither(getRepositoryInfoFromEvent(config.GITHUB_EVENT_PATH, config.INPUT_EVENT_NAME))
   ),
   TE.bind('octokit', ({ config }) => TE.fromEither(createOctokitInstance(config.INPUT_REPO_TOKEN))),
-  TE.bind('check', ({ octokit, repositoryInfo }) =>
-    createGithubCheck(octokit, repositoryInfo, `${CHECK_NAME} (${repositoryInfo.eventName})`)
-  ),
   TE.bind('fileContents', ({ config }) => readFilesToAnalyze(config.INPUT_FILE_GLOB, config.GITHUB_WORKSPACE)),
   TE.bind('annotations', ({ fileContents, config }) =>
     createSpectralAnnotations(config.INPUT_SPECTRAL_RULESET, fileContents, config.GITHUB_WORKSPACE)
+  ),
+  TE.bind('check', ({ octokit, repositoryInfo }) =>
+    createGithubCheck(octokit, repositoryInfo, `${CHECK_NAME} (${repositoryInfo.eventName})`)
   ),
   TE.bind('checkResponse', ({ octokit, check, repositoryInfo, annotations }) =>
     updateGithubCheck(
@@ -149,11 +149,11 @@ const program = pipe(
       annotations.findIndex(f => f.annotation_level === 'failure') === -1 ? 'success' : 'failure'
     )
   ),
-  TE.map(({ checkResponse, repositoryInfo, annotations }) => {
+  TE.map(({ config, checkResponse, repositoryInfo, annotations }) => {
     checkResponse.map(res => {
       info(`Check run '${res.data.name}' concluded with '${res.data.conclusion}' (${res.data.html_url})`);
       info(
-        `Commit ${repositoryInfo.sha} has been annotated (https://github.com/${repositoryInfo.owner}/${repositoryInfo.repo}/commit/${repositoryInfo.sha})`
+        `Commit ${repositoryInfo.sha} has been annotated (${config.GITHUB_SERVER_URL}/${repositoryInfo.owner}/${repositoryInfo.repo}/commit/${repositoryInfo.sha})`
       );
     });
 
